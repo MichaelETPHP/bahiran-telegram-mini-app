@@ -1,0 +1,9 @@
+{
+  "name": "bahiran-api",
+  "version": "1.0.0",
+  "description": "Node.js API for Bahiran Mini App – Telegram login validation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
