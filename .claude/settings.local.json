@@ -1,0 +1,27 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_MODEL": "stepfun/step-3.5-flash:free"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(npm install:*)",
+      "Bash(scoop install:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Read(//c/tmp/**)",
+      "Read(//c/Users/HP/AppData/Local/Temp/**)",
+      "Bash(npx:*)",
+      "Bash(cd:*)",
+      "Bash(node:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5000)",
+      "Bash(taskkill:*)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(findstr \":3000\\\\|:5000\")"
+    ]
+  }
+}

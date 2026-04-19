@@ -1,6 +1,6 @@
 # How to test with Ngrok
 
-One server runs on port **3000** (API + frontend). Expose it with Ngrok so Telegram can open the Mini App.
+One server runs on port **3000** (serves frontend only; all data comes from **https://api.bahirandelivery.cloud/**). Expose with Ngrok so Telegram can open the Mini App.
 
 ---
 
@@ -16,13 +16,11 @@ You should see:
 ```
 [Start] Bahiran server (API + frontend)
 [Start] Listening on http://localhost:3000
-[Start] Frontend: http://localhost:3000/  (serves ../frontend/)
-[Start] BOT_TOKEN: set
-[Start] API_BASE_URL: https://... (or "(same origin)" if not set)
-[Start] API: GET /api/health , POST /api/auth/telegram
+[Start] Frontend: http://localhost:3000/
+[Start] BAHIRAN_API_BASE_URL: https://api.bahirandelivery.cloud
 ```
 
-Open in browser: **http://localhost:3000**
+Open in browser: **http://localhost:3000** — the app will call the external API for login, restaurants, orders.
 
 ---
 
@@ -36,13 +34,17 @@ ngrok http 3000
 
 Copy the **https** URL (e.g. `https://abc123.ngrok-free.app`).
 
+- In **.env** set `API_BASE_URL=https://abc123.ngrok-free.app` (your Ngrok URL), then restart the server.
 - In [BotFather](https://t.me/botfather): **Bot Settings → Configure Mini App → Set URL** and paste this URL.
-- When users open the bot’s Mini App, Telegram loads that URL. The same server serves the app and the API, so set **API_BASE_URL** in `.env` to this Ngrok URL (server injects it into the app); for same-origin leave it empty.
+
+The frontend is served from Ngrok; all backend calls (login, restaurants, orders) go to **https://api.bahirandelivery.cloud/**.
 
 ---
 
 ## 3. Quick checklist
 
-1. **API:** `curl http://localhost:3000/api/health` → `{"ok":true,...}`
-2. **App:** Open http://localhost:3000 → Mini App loads.
-3. **With Ngrok:** Run `ngrok http 3000`, set that https URL in BotFather, open the bot in Telegram and launch the Mini App.
+1. **Local:** Open http://localhost:3000 → Mini App loads and uses https://api.bahirandelivery.cloud for API.
+2. **Ngrok:** Run `ngrok http 3000`, set `API_BASE_URL` in .env, restart server, set Mini App URL in BotFather.
+3. **Telegram:** Open the bot and launch the Mini App.
+
+See **RUN-WITH-NGROK.md** for full step-by-step.

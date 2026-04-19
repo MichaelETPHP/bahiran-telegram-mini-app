@@ -1,0 +1,13 @@
+{
+  "name": "bahiran-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot – request phone, save to MongoDB, open Mini App",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.10.0",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

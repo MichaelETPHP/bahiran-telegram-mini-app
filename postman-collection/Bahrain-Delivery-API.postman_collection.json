@@ -1,0 +1,1539 @@
+{
+  "info": {
+    "_postman_id": "bahrain-delivery-api-v1",
+    "name": "Bahrain Delivery Backend API",
+    "description": "Complete API collection for the Bahrain Delivery Backend.\n\n**Base URL:** `{{baseUrl}}` → set to `http://localhost:3000`\n\n**Auth:** All protected routes require `Authorization: Bearer {{token}}`\n\n**Roles:** Customer | Manager | Delivery_Person | Admin\n\n**Phone format:** Ethiopian E.164 e.g. `+251912345678`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:3000", "type": "string" },
+    { "key": "token",        "value": "",                      "type": "string" },
+    { "key": "restaurantId", "value": "",                      "type": "string" },
+    { "key": "orderId",      "value": "",                      "type": "string" },
+    { "key": "userId",       "value": "",                      "type": "string" },
+    { "key": "menuId",       "value": "",                      "type": "string" },
+    { "key": "foodId",       "value": "",                      "type": "string" },
+    { "key": "reviewId",     "value": "",                      "type": "string" },
+    { "key": "ratingId",     "value": "",                      "type": "string" },
+    { "key": "promoId",      "value": "",                      "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "🔐 Auth",
+      "description": "Authentication endpoints — OTP-based signup, login, password reset, and Telegram auth.\n\nTypical signup flow:\n1. POST /signup → get verificationId\n2. POST /verifySignupOTP → get JWT token\n\nTypical login flow:\n1. POST /login → get JWT token (or OTP if not verified)",
+      "item": [
+        {
+          "name": "1. Signup — Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/signup", "host": ["{{baseUrl}}"], "path": ["api","v1","users","signup"] },
+            "description": "**Step 1 of signup.** Sends a 6-digit OTP to the provided Ethiopian phone number via AfroMessage SMS.\n\n- If the user already exists and is verified → error 400\n- Save the returned `verificationId` for the next step\n- OTP is valid for 5 minutes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "2. Verify Signup OTP — Create Account",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/verifySignupOTP", "host": ["{{baseUrl}}"], "path": ["api","v1","users","verifySignupOTP"] },
+            "description": "**Step 2 of signup.** Verifies the OTP, creates the user account (role=Customer), and returns a JWT token.\n\n- `verificationId` is from step 1\n- `password` minimum 4 characters\n- `passwordConfirm` must match `password`\n- **Copy the returned `token` into the `{{token}}` variable**",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"code\": \"123456\",\n  \"verificationId\": \"AFRO_VID_HERE\",\n  \"password\": \"mypassword\",\n  \"passwordConfirm\": \"mypassword\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "3. Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/login", "host": ["{{baseUrl}}"], "path": ["api","v1","users","login"] },
+            "description": "Login with phone number and password.\n\n- Returns JWT token on success\n- If phone not verified → sends OTP instead of token\n- **Copy the returned `token` into `{{token}}`**",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"password\": \"mypassword\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "4. Send OTP (Generic)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/sendOTP", "host": ["{{baseUrl}}"], "path": ["api","v1","users","sendOTP"] },
+            "description": "Send an OTP to any phone number. Used for re-sending expired OTPs.\n\nReturns: `verificationId` needed for verification endpoints.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "5. Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/verifyOTP", "host": ["{{baseUrl}}"], "path": ["api","v1","users","verifyOTP"] },
+            "description": "Verify an OTP code. On success:\n- Marks phone as verified\n- Returns JWT token immediately\n\nUsed for login-via-OTP and phone verification flows.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"code\": \"123456\",\n  \"verificationId\": \"AFRO_VID_HERE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "6. Request Password Reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/requestResetOTP", "host": ["{{baseUrl}}"], "path": ["api","v1","users","requestResetOTP"] },
+            "description": "Send a password reset OTP to the phone number. Phone must belong to an existing account.\n\nReturns `verificationId` needed for the reset step.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "7. Reset Password with OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/resetPasswordOTP", "host": ["{{baseUrl}}"], "path": ["api","v1","users","resetPasswordOTP"] },
+            "description": "Reset password using the OTP received on the phone. On success updates the password and returns a new JWT token.\n\n- `password` minimum 4 characters\n- `passwordConfirm` must match `password`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"code\": \"123456\",\n  \"verificationId\": \"AFRO_VID_HERE\",\n  \"password\": \"newpassword123\",\n  \"passwordConfirm\": \"newpassword123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "8. Update My Password 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/updateMyPassword", "host": ["{{baseUrl}}"], "path": ["api","v1","users","updateMyPassword"] },
+            "description": "Update the currently logged-in user's password. Requires valid auth token.\n\n- Minimum 4 characters\n- `passwordConfirm` must match `password`\n- Returns new JWT token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"newpassword123\",\n  \"passwordConfirm\": \"newpassword123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "9. Telegram Phone Auth",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/auth/telegram-phone", "host": ["{{baseUrl}}"], "path": ["api","v1","users","auth","telegram-phone"] },
+            "description": "Authenticate or register a user via Telegram.\n\n- If user does NOT exist → creates new Customer account with a random 6-digit password (returned in response)\n- If user EXISTS → logs in and returns JWT\n- `telegramId` and `phone` are required",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"telegramId\": \"123456789\",\n  \"username\": \"john_doe\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "10. Get Token by Telegram ID",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/auth/telegram-token", "host": ["{{baseUrl}}"], "path": ["api","v1","users","auth","telegram-token"] },
+            "description": "Exchange a Telegram ID for a JWT token. Used by the Telegram bot to get an API token for a previously registered user without going through OTP.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": \"123456789\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "11. Request Account Deletion (Public)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/request-deletion", "host": ["{{baseUrl}}"], "path": ["api","v1","users","request-deletion"] },
+            "description": "Google Play compliance endpoint. Soft-marks the account for deletion.\n\n- `phone` and `email` are required\n- Returns 200 even if user doesn't exist (security: no user enumeration)\n- Admin must process the deletion manually",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+251912345678\",\n  \"email\": \"user@example.com\",\n  \"reason\": \"Privacy concerns\",\n  \"feedback\": \"I want all my data removed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "👤 Me (Current User)",
+      "description": "Endpoints for the currently authenticated user — profile, password change, and address management. All require Bearer token.",
+      "item": [
+        {
+          "name": "Get Me 🔒",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/getMe", "host": ["{{baseUrl}}"], "path": ["api","v1","users","getMe"] },
+            "description": "Get the full profile of the currently authenticated user.\n\n- If role is Manager → also returns their associated restaurant (`id` + `name`)\n- Token is read from `Authorization` header or `jwt` cookie"
+          }
+        },
+        {
+          "name": "Update My Profile 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/updateMe", "host": ["{{baseUrl}}"], "path": ["api","v1","users","updateMe"] },
+            "description": "Update the current user's first name, last name, or profile picture.\n\n- **Role must be Customer**\n- Use `multipart/form-data` when uploading a profile picture (field: `profilePicture`)\n- Cannot update password or phone here\n- Image is uploaded to Cloudinary (folder: `profile_pictures`)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName", "value": "John", "type": "text" },
+                { "key": "lastName",  "value": "Doe",  "type": "text" },
+                { "key": "profilePicture", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Current Address 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/saveLocation", "host": ["{{baseUrl}}"], "path": ["api","v1","users","saveLocation"] },
+            "description": "Add a new address to the current user account.\n\n- Maximum **3 addresses** per user\n- `label` must be one of: `Home` | `Work` | `Other`\n- `location.lat` and `location.lng` are required\n- If `isDefault: true`, all other addresses are unset as default\n- Stored as GeoJSON Point `[lng, lat]`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Home\",\n  \"label\": \"Home\",\n  \"additionalInfo\": \"Near the blue gate, 2nd floor\",\n  \"isDefault\": true,\n  \"location\": {\n    \"lat\": 26.2235,\n    \"lng\": 50.5876\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get My Addresses 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/myAddresses", "host": ["{{baseUrl}}"], "path": ["api","v1","users","myAddresses"] },
+            "description": "Get all saved addresses of the currently authenticated user. Returns an array of address subdocuments including their `_id`, `label`, `location`, and `isDefault` flag."
+          }
+        },
+        {
+          "name": "Edit Address 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/address/:addressId", "host": ["{{baseUrl}}"], "path": ["api","v1","users","address",":addressId"], "variable": [{ "key": "addressId", "value": "ADDRESS_SUBDOC_ID" }] },
+            "description": "Edit an existing address by its subdocument `_id`.\n\n- Only provided fields are updated\n- `label` must be `Home` | `Work` | `Other` if provided\n- Providing `isDefault: true` unsets all other default addresses",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office\",\n  \"label\": \"Work\",\n  \"additionalInfo\": \"Floor 3, Room 301\",\n  \"isDefault\": false,\n  \"location\": {\n    \"lat\": 26.2300,\n    \"lng\": 50.5900\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Delete Address 🔒",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/address/:addressId", "host": ["{{baseUrl}}"], "path": ["api","v1","users","address",":addressId"], "variable": [{ "key": "addressId", "value": "ADDRESS_SUBDOC_ID" }] },
+            "description": "Delete an address by its subdocument `_id`.\n\n- If the deleted address was the default, the **first remaining address** is automatically promoted to default\n- Returns updated addresses array"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🛡️ Users (Admin)",
+      "description": "Admin-only user management endpoints. All require Admin role except `Delivery Person Signup` which is public.",
+      "item": [
+        {
+          "name": "Get All Users 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?role=Customer&active=true",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","users"],
+              "query": [
+                { "key": "role",   "value": "Customer", "description": "Customer | Manager | Delivery_Person | Admin" },
+                { "key": "active", "value": "true",     "description": "true | false" }
+              ]
+            },
+            "description": "Get all users. Both query params are optional.\n\n- `role` filter: `Customer` | `Manager` | `Delivery_Person` | `Admin`\n- `active` filter: `true` | `false`\n\n**Requires Admin role**"
+          }
+        },
+        {
+          "name": "Create User 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+            "description": "Create a new user as Admin. Sends OTP to verify phone. Default password is `1234`.\n\n**Role-specific required fields:**\n- `Manager` → `fcnNumber` required\n- `Delivery_Person` → `fcnNumber` + `deliveryMethod` required\n\nOptionally upload `profilePicture` as file (multipart).\n\n**Requires Admin role**",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "phone",          "value": "+251912345678", "type": "text" },
+                { "key": "firstName",      "value": "John",          "type": "text" },
+                { "key": "lastName",       "value": "Doe",           "type": "text" },
+                { "key": "role",           "value": "Manager",       "type": "text", "description": "Customer | Manager | Delivery_Person | Admin" },
+                { "key": "fcnNumber",      "value": "FCN12345",      "type": "text", "description": "Required for Manager and Delivery_Person" },
+                { "key": "deliveryMethod", "value": "Bike",          "type": "text", "description": "Required for Delivery_Person" },
+                { "key": "profilePicture", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Find User (Query) 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/getUser?id=USER_ID",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","users","getUser"],
+              "query": [
+                { "key": "id",     "value": "USER_ID",         "description": "Search by MongoDB _id" },
+                { "key": "phone",  "value": "+251912345678",   "description": "Search by phone (disable id if using this)", "disabled": true },
+                { "key": "active", "value": "false",           "description": "Filter by active status", "disabled": true }
+              ]
+            },
+            "description": "Search for a user using one or more query params:\n\n- `?id=USER_ID` — find by MongoDB _id\n- `?phone=+251912345678` — find by phone number\n- `?active=false` — filter by active status\n\nAt least one param is required.\n\n**Requires Admin role**"
+          }
+        },
+        {
+          "name": "Update User 🔒 Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","users",":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] },
+            "description": "Update a user by ID. All fields are optional.\n\n- Changing `phone` triggers a new OTP send and marks phone as unverified\n- Changing `role` to `Delivery_Person` requires `fcnNumber` + `deliveryMethod`\n- Supports profile picture upload (multipart)\n\n**Requires Admin role**",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName",      "value": "Updated",      "type": "text" },
+                { "key": "lastName",       "value": "Name",         "type": "text" },
+                { "key": "role",           "value": "Delivery_Person", "type": "text" },
+                { "key": "fcnNumber",      "value": "FCN99999",     "type": "text" },
+                { "key": "deliveryMethod", "value": "Motorcycle",   "type": "text" },
+                { "key": "profilePicture", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete User 🔒 Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","users",":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] },
+            "description": "Hard-delete a user by ID. Returns **204 No Content** on success.\n\n**Requires Admin role**"
+          }
+        },
+        {
+          "name": "Activate User 🔒 Admin",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","users",":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] },
+            "description": "Activate an **inactive** user account.\n\n- Only works on accounts where `active: false`\n- Typically used after reviewing a Delivery Person signup\n- Returns 404 if user is not found or already active\n\n**Requires Admin role**"
+          }
+        },
+        {
+          "name": "Delivery Person Signup (Public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/delivery/signup", "host": ["{{baseUrl}}"], "path": ["api","v1","users","delivery","signup"] },
+            "description": "Public self-registration for delivery persons.\n\n- Account is created as `active: false` — login is blocked until Admin activates it\n- Default password: `1234`\n- Optional: `profilePicture` image upload (multipart)\n\n**Required fields:** `phone`, `firstName`, `lastName`, `fcnNumber`, `deliveryMethod`",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "phone",          "value": "+251912345678", "type": "text" },
+                { "key": "firstName",      "value": "Ali",           "type": "text" },
+                { "key": "lastName",       "value": "Hassan",        "type": "text" },
+                { "key": "fcnNumber",      "value": "FCN77777",      "type": "text" },
+                { "key": "deliveryMethod", "value": "Bike",          "type": "text", "description": "Bike | Motorcycle | Car" },
+                { "key": "profilePicture", "type": "file", "src": "" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏪 Restaurants",
+      "description": "Restaurant management. Public GET endpoints. Admin for create. Manager or Admin for update/delete.",
+      "item": [
+        {
+          "name": "Get All Restaurants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants"] },
+            "description": "Public. Returns all active restaurants."
+          }
+        },
+        {
+          "name": "Create Restaurant 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants"] },
+            "description": "Create a new restaurant. Requires Admin role.\n\n- Upload image as `multipart/form-data`, field name: `image`\n- Image is uploaded to Cloudinary\n- `managerId` must be a User ID with role `Manager`",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name",        "value": "Al Waha Restaurant",    "type": "text" },
+                { "key": "description", "value": "Authentic Bahraini cuisine", "type": "text" },
+                { "key": "address",     "value": "Manama, Block 310",     "type": "text" },
+                { "key": "phone",       "value": "+97336001234",          "type": "text" },
+                { "key": "managerId",   "value": "MANAGER_USER_ID",       "type": "text" },
+                { "key": "image",       "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Restaurants — Admin List 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/admin/list", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","admin","list"] },
+            "description": "Get complete list of **all** restaurants including inactive ones. Requires Admin role."
+          }
+        },
+        {
+          "name": "Get Restaurants with Order Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/restaurants/order-stats", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","restaurants","order-stats"] },
+            "description": "Public. Returns all restaurants with their aggregated order statistics."
+          }
+        },
+        {
+          "name": "Assign Manager to Restaurant 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/assign-manager", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","assign-manager"] },
+            "description": "Assign a Manager-role user to a restaurant. The user must already have the `Manager` role.\n\n**Requires Admin role**",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"managerId\": \"MANAGER_USER_ID\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update Restaurant Location 🔒 Admin/Manager",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/location/:restaurantId", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","location",":restaurantId"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Update the GPS coordinates of a restaurant. Requires Admin or Manager role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 26.2235,\n  \"lng\": 50.5876\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get My Restaurants (Manager) 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/by-manager", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","by-manager"] },
+            "description": "Get all restaurants where `managerId` matches the current user. Requires Manager or Admin role."
+          }
+        },
+        {
+          "name": "Get Nearby Restaurants 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/restaurants/distance-from-coords?lat=26.2235&lng=50.5876",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants","distance-from-coords"],
+              "query": [
+                { "key": "lat", "value": "26.2235" },
+                { "key": "lng", "value": "50.5876" }
+              ]
+            },
+            "description": "Get restaurants sorted by distance from the provided coordinates. Requires auth."
+          }
+        },
+        {
+          "name": "Get Restaurant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":id"], "variable": [{ "key": "id", "value": "{{restaurantId}}" }] },
+            "description": "Public. Get a single restaurant by MongoDB ID."
+          }
+        },
+        {
+          "name": "Update Restaurant 🔒 Manager/Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":id"], "variable": [{ "key": "id", "value": "{{restaurantId}}" }] },
+            "description": "Update a restaurant by ID. Supports image re-upload. Requires Manager or Admin role.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name",        "value": "Updated Restaurant Name", "type": "text" },
+                { "key": "description", "value": "Updated description",     "type": "text" },
+                { "key": "image",       "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Restaurant 🔒 Manager/Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":id"], "variable": [{ "key": "id", "value": "{{restaurantId}}" }] },
+            "description": "Delete a restaurant by ID. Requires Manager or Admin role."
+          }
+        },
+        {
+          "name": "Activate Restaurant 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":id"], "variable": [{ "key": "id", "value": "{{restaurantId}}" }] },
+            "description": "Activate an inactive restaurant by ID. Requires Admin role."
+          }
+        },
+        {
+          "name": "Get Restaurant with Full Menu 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:id/menu", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":id","menu"], "variable": [{ "key": "id", "value": "{{restaurantId}}" }] },
+            "description": "Get a restaurant with all its menus and food items fully populated in a single request. Ideal for customer-facing restaurant screens."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🍔 Foods",
+      "description": "Food item management. Public GET. Admin or Manager for create/update/delete.",
+      "item": [
+        {
+          "name": "Get All Foods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/foods", "host": ["{{baseUrl}}"], "path": ["api","v1","foods"] },
+            "description": "Public. Returns all food items across all restaurants."
+          }
+        },
+        {
+          "name": "Create Food 🔒 Admin/Manager",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/foods", "host": ["{{baseUrl}}"], "path": ["api","v1","foods"] },
+            "description": "Create a new food item. Requires Admin or Manager role.\n\n- Upload image as `multipart/form-data`, field name: `imageCover`\n- Image is uploaded to Cloudinary",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name",         "value": "Machboos",                     "type": "text" },
+                { "key": "description",  "value": "Traditional Bahraini rice dish", "type": "text" },
+                { "key": "price",        "value": "5.5",                          "type": "text" },
+                { "key": "menuId",       "value": "{{menuId}}",                   "type": "text" },
+                { "key": "restaurantId", "value": "{{restaurantId}}",             "type": "text" },
+                { "key": "imageCover",   "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Foods by Menu ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/foods/by-menu/:menuId", "host": ["{{baseUrl}}"], "path": ["api","v1","foods","by-menu",":menuId"], "variable": [{ "key": "menuId", "value": "{{menuId}}" }] },
+            "description": "Public. Get all food items belonging to a specific menu by its ID."
+          }
+        },
+        {
+          "name": "Get Food",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/foods/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","foods",":id"], "variable": [{ "key": "id", "value": "{{foodId}}" }] },
+            "description": "Public. Get a single food item by its MongoDB ID."
+          }
+        },
+        {
+          "name": "Update Food 🔒 Admin/Manager",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/foods/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","foods",":id"], "variable": [{ "key": "id", "value": "{{foodId}}" }] },
+            "description": "Update a food item by ID. Supports image re-upload. Requires Admin or Manager role.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name",       "value": "Updated Food Name", "type": "text" },
+                { "key": "price",      "value": "6.0",               "type": "text" },
+                { "key": "imageCover", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Food 🔒 Admin/Manager",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/foods/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","foods",":id"], "variable": [{ "key": "id", "value": "{{foodId}}" }] },
+            "description": "Delete a food item by ID. Requires Admin or Manager role."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🍽️ Food Menus",
+      "description": "Menu category management. Public GET. Admin/Manager for write operations.",
+      "item": [
+        {
+          "name": "Get All Menus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus"] },
+            "description": "Public. Returns all food menus."
+          }
+        },
+        {
+          "name": "Get Menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus",":id"], "variable": [{ "key": "id", "value": "{{menuId}}" }] },
+            "description": "Public. Get a single menu by its ID."
+          }
+        },
+        {
+          "name": "Get Menus by Restaurant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus/restaurant/:restaurantId", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus","restaurant",":restaurantId"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Public. Returns all menus belonging to a specific restaurant."
+          }
+        },
+        {
+          "name": "Create Menu 🔒 Admin/Manager",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus"] },
+            "description": "Create a new menu category for a restaurant. Requires Admin or Manager role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Menu\",\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"description\": \"Our main food categories\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update Menu 🔒 Admin/Manager",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus",":id"], "variable": [{ "key": "id", "value": "{{menuId}}" }] },
+            "description": "Update a menu by ID. Requires Admin or Manager role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Menu Name\",\n  \"description\": \"Updated description\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Delete Menu 🔒 Admin/Manager",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus",":id"], "variable": [{ "key": "id", "value": "{{menuId}}" }] },
+            "description": "Delete a menu by ID. Requires Admin or Manager role."
+          }
+        },
+        {
+          "name": "Bulk Create Menus & Foods 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/food-menus/bulk-create", "host": ["{{baseUrl}}"], "path": ["api","v1","food-menus","bulk-create"] },
+            "description": "Bulk-create menus and their food items in a single request. Useful for initial restaurant setup.\n\n**Requires Admin role**",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"menus\": [\n    {\n      \"name\": \"Starters\",\n      \"foods\": [\n        { \"name\": \"Samosa\", \"price\": 1.5, \"description\": \"Crispy fried samosa\" },\n        { \"name\": \"Hummus\", \"price\": 2.0, \"description\": \"Creamy hummus with pita\" }\n      ]\n    },\n    {\n      \"name\": \"Main Course\",\n      \"foods\": [\n        { \"name\": \"Machboos\", \"price\": 5.5, \"description\": \"Traditional rice dish\" }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get All Foods by Menu ID (alt route)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/all-foods/by-menu/:menuId", "host": ["{{baseUrl}}"], "path": ["api","v1","all-foods","by-menu",":menuId"], "variable": [{ "key": "menuId", "value": "{{menuId}}" }] },
+            "description": "Public. Alternative route to fetch all foods for a menu. Used by customer-facing app screens."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📦 Orders",
+      "description": "Order lifecycle management. Customers place orders, Restaurants update status, Delivery Persons pick up and deliver.",
+      "item": [
+        {
+          "name": "Place Order 🔒 Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/place-order", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","place-order"] },
+            "description": "Place a new order. Initializes a Chapa payment and returns a `checkout_url`.\n\n- `orderType`: `Delivery` | `Pickup`\n- `items`: array of `{ foodId, quantity }`\n- `deliveryAddress`: required for Delivery orders\n- Returns `checkout_url` — redirect customer here to complete payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"items\": [\n    { \"foodId\": \"{{foodId}}\", \"quantity\": 2 },\n    { \"foodId\": \"ANOTHER_FOOD_ID\", \"quantity\": 1 }\n  ],\n  \"orderType\": \"Delivery\",\n  \"deliveryAddress\": {\n    \"lat\": 26.2235,\n    \"lng\": 50.5876\n  },\n  \"note\": \"No onions please\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Estimate Delivery Fee 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/estimate-delivery-fee", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","estimate-delivery-fee"] },
+            "description": "Estimate the delivery fee before placing an order. Based on distance between restaurant and delivery address.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"deliveryAddress\": {\n    \"lat\": 26.2235,\n    \"lng\": 50.5876\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Service Fee 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/getServiceFee", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","getServiceFee"] },
+            "description": "Get the current platform service fee configuration."
+          }
+        },
+        {
+          "name": "Chapa Payment Webhook (auto-called)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/chapa-webhook", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","chapa-webhook"] },
+            "description": "⚠️ **Do not call manually in production.** This webhook is called automatically by Chapa's servers after a payment is completed or failed.\n\nVerifies payment signature and updates order status to `Confirmed`."
+          }
+        },
+        {
+          "name": "Get My Orders 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/my-orders", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","my-orders"] },
+            "description": "Get all orders placed by the currently authenticated user. Results are cached in Redis."
+          }
+        },
+        {
+          "name": "Get Orders by Phone 🔒",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/getOrdersByPhone", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","getOrdersByPhone"] },
+            "description": "Get orders associated with the authenticated user's phone number."
+          }
+        },
+        {
+          "name": "Get All Orders by Status 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/get-all-orders/:status", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","get-all-orders",":status"], "variable": [{ "key": "status", "value": "Pending", "description": "Pending | Confirmed | Preparing | Cooked | Picked_Up | Delivered | Cancelled" }] },
+            "description": "Get all orders across the platform filtered by status. Requires Admin role.\n\n**Status values:** `Pending` | `Confirmed` | `Preparing` | `Cooked` | `Picked_Up` | `Delivered` | `Cancelled`"
+          }
+        },
+        {
+          "name": "Accept Order for Delivery 🔒 Delivery",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/accept-for-delivery", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","accept-for-delivery"] },
+            "description": "Delivery person accepts a cooked order for delivery. Assigns the current user as the delivery person for the order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update Order Status 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/:orderId/status", "host": ["{{baseUrl}}"], "path": ["api","v1","orders",":orderId","status"], "variable": [{ "key": "orderId", "value": "{{orderId}}" }] },
+            "description": "Update the status of an order. Allowed transitions by role:\n\n- **Manager:** `Confirmed` → `Preparing` → `Cooked`\n- **Delivery_Person:** `Picked_Up` → `Delivered`\n- **Admin:** any transition",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Preparing\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Verify Delivery (Customer) 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/verify-delivery", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","verify-delivery"] },
+            "description": "Customer confirms delivery by entering the 6-digit code shown by the delivery person. This completes the order and triggers payment disbursement.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"verificationCode\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Verify Restaurant Pickup 🔒 Delivery",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/verify-restaurant-pickup", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","verify-restaurant-pickup"] },
+            "description": "Delivery person confirms they have picked up the order from the restaurant using the restaurant pickup code.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"pickupCode\": \"654321\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Orders by Restaurant 🔒 Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/restaurant/:restaurantId/orders", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","restaurant",":restaurantId","orders"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Get all orders for a specific restaurant. Results are cached in Redis. Requires Manager or Admin role."
+          }
+        },
+        {
+          "name": "Get Cooked Orders 🔒 Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/cooked", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","cooked"] },
+            "description": "Get all orders with `Cooked` status for the manager's restaurant. Used by restaurant display screens."
+          }
+        },
+        {
+          "name": "Get Available Cooked Orders 🔒 Delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/available-cooked", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","available-cooked"] },
+            "description": "Get all cooked orders available for pickup by delivery persons. Used by delivery apps to show a list of available jobs."
+          }
+        },
+        {
+          "name": "Count Available Cooked Orders 🔒 Delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/available-cooked/count", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","available-cooked","count"] },
+            "description": "Returns the **count** of cooked orders waiting for pickup. Used for notification badges in the delivery app."
+          }
+        },
+        {
+          "name": "Get My Active Delivery Orders 🔒 Delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/get-orders-by-DeliveryMan", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","get-orders-by-DeliveryMan"] },
+            "description": "Get all active orders currently assigned to the authenticated delivery person."
+          }
+        },
+        {
+          "name": "Get Delivery Order History 🔒 Delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/orderHistory", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","orderHistory"] },
+            "description": "Get completed delivery history for the currently authenticated delivery person."
+          }
+        },
+        {
+          "name": "Get Restaurants Order Stats 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/orders/restaurants/order-stats", "host": ["{{baseUrl}}"], "path": ["api","v1","orders","restaurants","order-stats"] },
+            "description": "Get all restaurants with their aggregated order statistics. Requires Admin role."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "💰 Balance & Withdrawals",
+      "description": "Wallet management for delivery persons and managers. Includes balance checking, withdrawal requests, and transaction history.",
+      "item": [
+        {
+          "name": "Chapa Transfer Approval (Webhook)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/balance/chapa-transfer-approval", "host": ["{{baseUrl}}"], "path": ["api","v1","balance","chapa-transfer-approval"] },
+            "description": "⚠️ **Public webhook — do not call manually.** Called by Chapa automatically after a transfer/withdrawal is approved or rejected.\n\nUpdates the withdrawal record status and notifies the user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"transfer.success\",\n  \"data\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get My Balance 🔒 Delivery/Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/balance", "host": ["{{baseUrl}}"], "path": ["api","v1","balance"] },
+            "description": "Get current wallet balance. Requires `Delivery_Person` or `Manager` role."
+          }
+        },
+        {
+          "name": "Initialize Withdrawal 🔒 Delivery/Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/balance/initialize-withdraw", "host": ["{{baseUrl}}"], "path": ["api","v1","balance","initialize-withdraw"] },
+            "description": "Get the withdrawal form data — available banks list + current balance. Call this before showing the withdrawal screen. Requires `Delivery_Person` or `Manager` role."
+          }
+        },
+        {
+          "name": "Request Withdrawal 🔒 Delivery/Manager",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/balance/withdraw", "host": ["{{baseUrl}}"], "path": ["api","v1","balance","withdraw"] },
+            "description": "Submit a withdrawal request via Chapa transfer. Requires `Delivery_Person` or `Manager` role.\n\n- `bankCode` from the initialize-withdraw banks list\n- `accountNumber` — bank account number\n- `amount` — must not exceed current balance",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"CBE\",\n  \"accountNumber\": \"1000123456789\",\n  \"amount\": 500\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Transaction History 🔒 Delivery/Manager",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/balance/history", "host": ["{{baseUrl}}"], "path": ["api","v1","balance","history"] },
+            "description": "Get the full credit/debit transaction history of the authenticated user's wallet. Requires `Delivery_Person` or `Manager` role."
+          }
+        },
+        {
+          "name": "Get Withdraw History 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/balance/withdraw-history/:requesterType", "host": ["{{baseUrl}}"], "path": ["api","v1","balance","withdraw-history",":requesterType"], "variable": [{ "key": "requesterType", "value": "Delivery_Person", "description": "Delivery_Person | Manager" }] },
+            "description": "Get all withdrawal requests filtered by requester type. Requires Admin role.\n\n- `:requesterType`: `Delivery_Person` | `Manager`"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "💬 Reviews",
+      "description": "Text reviews for restaurants. Supports direct and nested restaurant routes. One review per user per restaurant.",
+      "item": [
+        {
+          "name": "Get All Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/reviews", "host": ["{{baseUrl}}"], "path": ["api","v1","reviews"] },
+            "description": "Public. Returns all reviews across all restaurants, each populated with restaurant and user details."
+          }
+        },
+        {
+          "name": "Get Review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/reviews/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","reviews",":id"], "variable": [{ "key": "id", "value": "{{reviewId}}" }] },
+            "description": "Public. Get a single review by its ID with restaurant and user populated."
+          }
+        },
+        {
+          "name": "Create Review 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/reviews", "host": ["{{baseUrl}}"], "path": ["api","v1","reviews"] },
+            "description": "Create a new review for a restaurant. Requires auth.\n\nThe `user` field is automatically set from the token. When using the nested route `/restaurants/:restaurantId/reviews`, `restaurant` is also auto-set from the URL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurant\": \"{{restaurantId}}\",\n  \"comment\": \"Great food and very fast delivery!\",\n  \"rating\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update My Review 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/reviews/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","reviews",":id"], "variable": [{ "key": "id", "value": "{{reviewId}}" }] },
+            "description": "Update your own review. Only the review **owner** can update it — returns 403 otherwise.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Updated: still great food!\",\n  \"rating\": 4\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Delete My Review 🔒",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/reviews/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","reviews",":id"], "variable": [{ "key": "id", "value": "{{reviewId}}" }] },
+            "description": "Delete your own review by ID. Only the review **owner** can delete it — returns 403 otherwise."
+          }
+        },
+        {
+          "name": "Get Restaurant Reviews (Nested)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:restaurantId/reviews", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":restaurantId","reviews"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Public. Get all reviews for a specific restaurant using the nested URL pattern."
+          }
+        },
+        {
+          "name": "Create Restaurant Review (Nested) 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:restaurantId/reviews", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":restaurantId","reviews"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Create a review using the nested URL. `restaurantId` is auto-injected from the URL, `user` from the token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Amazing experience! Highly recommend.\",\n  \"rating\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "⭐ Ratings",
+      "description": "Integer star ratings (1–5) for restaurants. One rating per user per restaurant enforced by a unique index. Automatically recalculates restaurant `ratingAverage` and `ratingQuantity` on every create/update/delete.",
+      "item": [
+        {
+          "name": "Get All Ratings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/ratings", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings"] },
+            "description": "Public. Returns all ratings across all restaurants. Each rating is auto-populated with user details (`firstName`, `lastName`, `email`)."
+          }
+        },
+        {
+          "name": "Get Rating",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/ratings/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings",":id"], "variable": [{ "key": "id", "value": "{{ratingId}}" }] },
+            "description": "Public. Get a single rating by its MongoDB ID."
+          }
+        },
+        {
+          "name": "Create Rating 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/ratings", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings"] },
+            "description": "Submit a star rating for a restaurant. Requires auth.\n\n- `rating`: **integer 1–5** (required)\n- `comment`: optional, 10–1000 characters\n- `restaurant`: required (MongoDB ID)\n- **One rating per user per restaurant** — duplicate returns error 400\n- Automatically updates restaurant `ratingAverage` and `ratingQuantity`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurant\": \"{{restaurantId}}\",\n  \"rating\": 5,\n  \"comment\": \"Excellent food quality and fast delivery!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update My Rating 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/ratings/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings",":id"], "variable": [{ "key": "id", "value": "{{ratingId}}" }] },
+            "description": "Update your own rating. Only the rating **owner** can update it — returns 403 otherwise.\n\nChanging the rating value automatically recalculates the restaurant's average.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Good but slightly slower today\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Delete My Rating 🔒",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/ratings/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings",":id"], "variable": [{ "key": "id", "value": "{{ratingId}}" }] },
+            "description": "Delete your own rating. Only the rating **owner** can delete it — returns 403 otherwise.\n\nRestaurant `ratingAverage` and `ratingQuantity` are recalculated automatically."
+          }
+        },
+        {
+          "name": "Get Restaurant Ratings (Nested)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:restaurantId/ratings", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":restaurantId","ratings"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Public. Get all ratings for a specific restaurant using the nested URL pattern."
+          }
+        },
+        {
+          "name": "Create Restaurant Rating (Nested) 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurants/:restaurantId/ratings", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurants",":restaurantId","ratings"], "variable": [{ "key": "restaurantId", "value": "{{restaurantId}}" }] },
+            "description": "Create a rating using the nested URL. The `restaurant` field is auto-injected from the URL param — no need to include it in the body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Best restaurant in town!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🚚 Deliveries",
+      "description": "Delivery assignment management. Links delivery persons to orders.",
+      "item": [
+        {
+          "name": "Assign Delivery to Order 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries"] },
+            "description": "Assign a delivery person to an order. Requires auth.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"deliveryPersonId\": \"DELIVERY_PERSON_USER_ID\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get All Deliveries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries"] },
+            "description": "Public. Returns all delivery records."
+          }
+        },
+        {
+          "name": "Cancel Delivery Assignment 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries/cancel", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries","cancel"] },
+            "description": "Cancel an active delivery assignment. Requires auth.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries",":id"], "variable": [{ "key": "id", "value": "DELIVERY_ID" }] },
+            "description": "Public. Get a single delivery record by ID."
+          }
+        },
+        {
+          "name": "Update Delivery",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries",":id"], "variable": [{ "key": "id", "value": "DELIVERY_ID" }] },
+            "description": "Update a delivery record by ID.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Picked_Up\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Delete Delivery",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/deliveries/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","deliveries",":id"], "variable": [{ "key": "id", "value": "DELIVERY_ID" }] },
+            "description": "Delete a delivery record by ID."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📱 SMS",
+      "description": "Bulk SMS sending via AfroMessage. Requires auth.",
+      "item": [
+        {
+          "name": "Send Bulk SMS 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/sms/bulk-send", "host": ["{{baseUrl}}"], "path": ["api","v1","sms","bulk-send"] },
+            "description": "Send the **same message** to multiple phone numbers. Requires auth.\n\n- `phones`: array of E.164 phone numbers\n- `message`: the SMS text to send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phones\": [\"+251912345678\", \"+251987654321\"],\n  \"message\": \"Your order is on its way!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Send Bulk Personalized SMS 🔒",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/sms/bulk-send-personalized", "host": ["{{baseUrl}}"], "path": ["api","v1","sms","bulk-send-personalized"] },
+            "description": "Send **different personalized messages** to different recipients. Requires auth.\n\n- `recipients`: array of `{ phone, message }` objects",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipients\": [\n    { \"phone\": \"+251912345678\", \"message\": \"Hi John, your order is ready for pickup!\" },\n    { \"phone\": \"+251987654321\", \"message\": \"Hi Sara, your order has been delivered!\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏢 Restaurant Applications",
+      "description": "Restaurant owner self-registration and Admin review workflow.\n\nFlow: Owner submits application → Admin reviews → Admin approves/rejects",
+      "item": [
+        {
+          "name": "Register Restaurant Application 🔒",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurant-applications/register", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurant-applications","register"] },
+            "description": "Submit a new restaurant registration application. Requires auth (any role).\n\n**Use `multipart/form-data`.**\n\n**Required files:**\n- `license` (image) — business license\n\n**Optional files based on `menuType`:**\n- `menuImage` — if `menuType=image`\n- `menuFile` — if `menuType=file`\n\n**`menuType` values:** `text` | `image` | `file`\n\nDuplicate prevention: one application per userId, phone, TIN, or FCN.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName",       "value": "Ahmed",                          "type": "text" },
+                { "key": "lastName",        "value": "Al-Bahrani",                     "type": "text" },
+                { "key": "phone",           "value": "+97336001234",                   "type": "text" },
+                { "key": "fcn",             "value": "FCN-2024-001",                   "type": "text" },
+                { "key": "restaurantName",  "value": "Al Waha Kitchen",               "type": "text" },
+                { "key": "restaurantAddress","value": "Manama, Block 310, Road 1234", "type": "text" },
+                { "key": "tinNumber",       "value": "TIN123456",                      "type": "text" },
+                { "key": "menuType",        "value": "text",                           "type": "text", "description": "text | image | file" },
+                { "key": "menuText",        "value": "Machboos, Harees, Muhammar, Balaleet", "type": "text", "description": "Required only when menuType=text" },
+                { "key": "license",         "type": "file", "src": "",                 "description": "Required" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Applications 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/restaurant-applications?status=pending&page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","restaurant-applications"],
+              "query": [
+                { "key": "status", "value": "pending",  "description": "pending | approved | rejected" },
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20" }
+              ]
+            },
+            "description": "Get all restaurant applications with pagination. Requires Admin role.\n\n- `status`: `pending` | `approved` | `rejected` (optional filter)\n- Default: page=1, limit=20\n- Results sorted by newest first"
+          }
+        },
+        {
+          "name": "Get Application 🔒 Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurant-applications/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurant-applications",":id"], "variable": [{ "key": "id", "value": "APPLICATION_ID" }] },
+            "description": "Get a single restaurant application by ID, populated with the applicant user details. Requires Admin role."
+          }
+        },
+        {
+          "name": "Approve Application 🔒 Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurant-applications/:id/approve", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurant-applications",":id","approve"], "variable": [{ "key": "id", "value": "APPLICATION_ID" }] },
+            "description": "Approve a restaurant application. Sets status to `approved`. Requires Admin role.\n\nOptionally add `adminNotes` to explain the decision.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminNotes\": \"All documents verified. Approved.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Reject Application 🔒 Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/restaurant-applications/:id/reject", "host": ["{{baseUrl}}"], "path": ["api","v1","restaurant-applications",":id","reject"], "variable": [{ "key": "id", "value": "APPLICATION_ID" }] },
+            "description": "Reject a restaurant application. Sets status to `rejected`. Requires Admin role.\n\nAdd `adminNotes` to explain the rejection reason to the applicant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminNotes\": \"License image is unclear. Please resubmit with a higher quality photo.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🎯 Promotions",
+      "description": "Banner/promotional card management for the app home screen. Public GET. Admin-only for create/update/delete.",
+      "item": [
+        {
+          "name": "Get All Promotions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/promotions?isActive=true",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","promotions"],
+              "query": [
+                { "key": "isActive", "value": "true",  "description": "true | false" },
+                { "key": "flat",     "value": "true",  "description": "Return flat array instead of nested object", "disabled": true }
+              ]
+            },
+            "description": "Public. Returns all promotions sorted by `order`, then `priority` desc, then `createdAt` desc.\n\n**Query params:**\n- `isActive`: `true` | `false` (optional filter)\n- `flat`: `true` → returns flat array (default is nested `{ promotions: [] }`)"
+          }
+        },
+        {
+          "name": "Create Promotion 🔒 Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/promotions", "host": ["{{baseUrl}}"], "path": ["api","v1","promotions"] },
+            "description": "Create a new promotional banner. Requires Admin role.\n\n- Upload banner image with field name `imageCover` (multipart)\n- `type`: `banner` | `popup` | `card`\n- `target`: `all` | `Customer` | `Manager`\n- `order`: display position index (lower = first)\n- `priority`: tiebreaker (higher = first)\n- `startDate` / `endDate`: ISO date strings (optional)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title",       "value": "50% Off This Weekend!",                        "type": "text" },
+                { "key": "subtitle",    "value": "Limited time offer",                            "type": "text" },
+                { "key": "description", "value": "Get 50% off on all orders above 5 BHD",        "type": "text" },
+                { "key": "type",        "value": "banner",                                        "type": "text", "description": "banner | popup | card" },
+                { "key": "discount",    "value": "50",                                            "type": "text" },
+                { "key": "target",      "value": "Customer",                                      "type": "text", "description": "all | Customer | Manager" },
+                { "key": "isActive",    "value": "true",                                          "type": "text" },
+                { "key": "priority",    "value": "1",                                             "type": "text" },
+                { "key": "order",       "value": "0",                                             "type": "text" },
+                { "key": "startDate",   "value": "2026-03-17",                                    "type": "text" },
+                { "key": "endDate",     "value": "2026-03-20",                                    "type": "text" },
+                { "key": "imageCover",  "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Promotion 🔒 Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/promotions/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","promotions",":id"], "variable": [{ "key": "id", "value": "{{promoId}}" }] },
+            "description": "Update a promotion by ID. Only provided fields are updated. Supports image re-upload. Requires Admin role.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title",      "value": "Updated Promo Title", "type": "text" },
+                { "key": "isActive",   "value": "false",               "type": "text" },
+                { "key": "imageCover", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Promotion 🔒 Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/promotions/:id", "host": ["{{baseUrl}}"], "path": ["api","v1","promotions",":id"], "variable": [{ "key": "id", "value": "{{promoId}}" }] },
+            "description": "Delete a promotion by ID. Requires Admin role."
+          }
+        },
+        {
+          "name": "Reorder Promotions 🔒 Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "url": { "raw": "{{baseUrl}}/api/v1/promotions/reorder", "host": ["{{baseUrl}}"], "path": ["api","v1","promotions","reorder"] },
+            "description": "Reorder promotions by providing an ordered array of promotion IDs. The array index becomes the `order` value (0 = displayed first). Requires Admin role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"promotionIds\": [\n    \"PROMO_ID_1\",\n    \"PROMO_ID_2\",\n    \"PROMO_ID_3\"\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🧪 Test / Dev",
+      "description": "Development and debugging utilities. Do not use in production.",
+      "item": [
+        {
+          "name": "Test Socket Event",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/test/test-socket", "host": ["{{baseUrl}}"], "path": ["api","v1","test","test-socket"] },
+            "description": "Emits a test `order:cooked` WebSocket event to the `deliveries` room.\n\nUseful for verifying that:\n- Socket.io is running\n- Delivery app clients are connected to the correct room\n- Real-time events are received correctly\n\n**Do not use in production.**"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Returns server health status including uptime, memory usage, environment, Redis connection status and latency."
+          }
+        }
+      ]
+    }
+
+  ]
+}

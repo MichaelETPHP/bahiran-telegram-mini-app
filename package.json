@@ -1,0 +1,12 @@
+{
+  "name": "bahiran-telegram-mini-app",
+  "private": true,
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "scripts": {
+    "start:api": "node api/server.js",
+    "start:bot": "node bot/bot.js",
+    "start:all": "node start-all.js"
+  }
+}

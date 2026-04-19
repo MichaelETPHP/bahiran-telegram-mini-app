@@ -1,0 +1,362 @@
+# Bahrain Delivery API - Endpoint Documentation
+
+## 📋 Overview
+
+**Collection Name:** Bahrain Delivery Backend API
+**Base URL:** `http://localhost:3000`
+**API Version:** v1
+**Schema:** RESTful JSON API
+**Phone Format:** Ethiopian E.164 (e.g., `+251912345678`)
+
+### Authentication
+- **Bearer Token:** All protected routes require `Authorization: Bearer {{token}}`
+- **Token Storage:** Store JWT token returned from login/verify endpoints
+- **Public Routes:** Some endpoints are publicly accessible (restaurants, foods, menus)
+
+### User Roles
+1. **Customer** - Places orders, writes reviews, manages address
+2. **Manager** - Manages restaurant(s), menus, foods, views orders
+3. **Delivery_Person** - Accepts deliveries, updates delivery status
+4. **Admin** - Full system access, user management, restaurant creation
+
+---
+
+## 🔐 Authentication Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/users/signup` | Send 6-digit OTP to phone (AfroMessage SMS) |
+| POST | `/api/v1/users/verifySignupOTP` | Verify OTP, create account, return JWT |
+| POST | `/api/v1/users/login` | Login with phone + password |
+| POST | `/api/v1/users/sendOTP` | Resend OTP (generic) |
+| POST | `/api/v1/users/verifyOTP` | Verify OTP for login/verification |
+| POST | `/api/v1/users/requestPasswordResetOTP` | Request password reset OTP |
+| PATCH | `/api/v1/users/resetPassword` | Reset password with OTP |
+| POST | `/api/v1/users/telegramPhoneAuth` | Telegram-specific phone auth |
+| POST | `/api/v1/users/getTokenByTelegramId` | Get JWT using Telegram ID |
+
+**Auth Flow:**
+1. Signup: `signup` → get `verificationId` → `verifySignupOTP` → get `token`
+2. Login: `login` with phone/password → returns `token` (or OTP if unverified)
+
+---
+
+## 👤 User Management
+
+### Current User (Authenticated)
+| Method | Endpoint | Role |
+|--------|----------|------|
+| GET | `/api/v1/users/me` | Get own profile |
+| PATCH | `/api/v1/users/me` | Update own profile |
+| POST | `/api/v1/users/me/address` | Save current address |
+| GET | `/api/v1/users/me/addresses` | Get all user addresses |
+| PATCH | `/api/v1/users/address/:id` | Edit address |
+| DELETE | `/api/v1/users/address/:id` | Delete address |
+
+### Admin-Only User Operations
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/users` | Get all users |
+| POST | `/api/v1/users` | Create user manually |
+| GET | `/api/v1/users/query` | Find user by query (phone, email) |
+| PATCH | `/api/v1/users/:id` | Update any user |
+| DELETE | `/api/v1/users/:id` | Delete user |
+| PATCH | `/api/v1/users/:id/activate` | Activate user account |
+
+**Public Route (Delivery Person Registration):**
+- `POST /api/v1/users/delivery-person-signup` - Special signup for delivery staff
+
+---
+
+## 🏪 Restaurants
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/v1/restaurants` | Public | All active restaurants |
+| POST | `/api/v1/restaurants` | Admin | Create restaurant (multipart: image, managerId) |
+| GET | `/api/v1/restaurants/:id` | Public | Single restaurant details |
+| GET | `/api/v1/restaurants/nearby` | Auth | Nearby by lat/lng |
+| GET | `/api/v1/restaurants/my` | Manager | Manager's own restaurants |
+| PATCH | `/api/v1/restaurants/:id` | Manager/Admin | Update restaurant |
+| DELETE | `/api/v1/restaurants/:id` | Manager/Admin | Delete restaurant |
+| PATCH | `/api/v1/restaurants/:id/activate` | Admin | Activate restaurant |
+| GET | `/api/v1/restaurants/:id/full-menu` | Auth | Restaurant + all menus/foods |
+| GET | `/api/v1/restaurants/stats` | Admin | Order statistics by restaurant |
+| PATCH | `/api/v1/restaurants/:id/location` | Admin/Manager | Update location |
+| PATCH | `/api/v1/restaurants/:id/manager` | Admin | Assign manager |
+
+---
+
+## 🍔 Foods
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/v1/foods` | Public | All foods (can filter) |
+| POST | `/api/v1/foods` | Admin/Manager | Create food item |
+| GET | `/api/v1/foods/:id` | Public | Single food details |
+| PATCH | `/api/v1/foods/:id` | Admin/Manager | Update food |
+| DELETE | `/api/v1/foods/:id` | Admin/Manager | Delete food |
+| GET | `/api/v1/foods/menu/:menuId` | Public | Foods by menu ID |
+| GET | `/api/v1/foods/menu/:menuId/full` | Public | Alternate route for menu foods |
+
+---
+
+## 🍽️ Food Menus
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/v1/menus` | Public | All menus |
+| POST | `/api/v1/menus` | Admin/Manager | Create menu |
+| GET | `/api/v1/menus/:id` | Public | Single menu |
+| PATCH | `/api/v1/menus/:id` | Admin/Manager | Update menu |
+| DELETE | `/api/v1/menus/:id` | Admin/Manager | Delete menu |
+| GET | `/api/v1/restaurants/:id/menus` | Public | Menus by restaurant |
+| POST | `/api/v1/menus/bulk` | Admin | Bulk create menus + foods (special format) |
+
+---
+
+## 📦 Orders (Core Feature)
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/v1/orders/place-order` | Customer | Place order + init Chapa payment |
+| POST | `/api/v1/orders/estimate-delivery-fee` | Customer | Calculate delivery cost |
+| GET | `/api/v1/orders/my-orders` | Customer | Customer's order history |
+| GET | `/api/v1/orders/phone/:phone` | Admin/Manager | Orders by customer phone |
+| PATCH | `/api/v1/orders/:id/status` | Manager/Delivery | Update order status |
+| POST | `/api/v1/orders/:id/accept-for-delivery` | Delivery | Accept order for delivery |
+| POST | `/api/v1/orders/:id/verify-delivery` | Customer | Confirm delivery completed |
+| POST | `/api/v1/orders/:id/verify-pickup` | Delivery | Confirm restaurant pickup |
+| GET | `/api/v1/orders/restaurant/:id` | Manager | Orders for specific restaurant |
+| GET | `/api/v1/orders/cooked` | Manager | Orders marked cooked, ready for delivery |
+| GET | `/api/v1/orders/available` | Delivery | Available cooked orders for pickup |
+
+**Service Fee:**
+- `GET /api/v1/orders/service-fee` - Get platform service fee percentage
+
+**Order Status Flow:**
+`Pending` → `Accepted` → `Preparing` → `Prepared` → `Picked Up` → `Delivered` / `Cancelled`
+
+---
+
+## 🚚 Deliveries
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/v1/deliveries/assign` | Manager | Assign delivery person to order |
+| GET | `/api/v1/deliveries` | Admin | All deliveries |
+| GET | `/api/v1/deliveries/my-active` | Delivery | Active deliveries assigned to you |
+| GET | `/api/v1/deliveries/history` | Delivery | Your delivery history |
+| GET | `/api/v1/deliveries/:id` | Auth | Single delivery details |
+| PATCH | `/api/v1/deliveries/:id` | Delivery | Update delivery (status, location) |
+| DELETE | `/api/v1/deliveries/:id` | Manager/Admin | Cancel delivery assignment |
+
+---
+
+## ⭐ Reviews & Ratings
+
+### Reviews
+| Method | Endpoint | Access |
+|--------|----------|--------|
+| GET | `/api/v1/reviews` | Public (all) |
+| POST | `/api/v1/reviews` | Customer (own) |
+| PATCH | `/api/v1/reviews/:id` | Customer (own) |
+| DELETE | `/api/v1/reviews/:id` | Customer (own) |
+| GET | `/api/v1/restaurants/:id/reviews` | Public (nested) |
+| POST | `/api/v1/restaurants/:id/reviews` | Customer (nested) |
+
+### Ratings
+| Method | Endpoint | Access |
+|--------|----------|--------|
+| GET | `/api/v1/ratings` | Public |
+| POST | `/api/v1/ratings` | Customer (own) |
+| PATCH | `/api/v1/ratings/:id` | Customer (own) |
+| DELETE | `/api/v1/ratings/:id` | Customer (own) |
+| GET | `/api/v1/restaurants/:id/ratings` | Public (nested) |
+| POST | `/api/v1/restaurants/:id/ratings` | Customer (nested) |
+
+---
+
+## 💰 Payments (Chapa Integration)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/payments/chapa-webhook` | Auto-called by Chapa on payment completion |
+| POST | `/api/v1/payments/chapa-transfer-approval` | Webhook for transfer approvals |
+
+**Note:** Payment flow is handled automatically; frontend only needs to redirect to `checkout_url` from `place-order` response.
+
+---
+
+## 📱 SMS
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/v1/sms/bulk` | Admin | Send bulk SMS to multiple numbers |
+| POST | `/api/v1/sms/bulk-personalized` | Admin | Send personalized bulk SMS |
+
+---
+
+## 🏢 Restaurant Applications
+
+For restaurant owners to apply to join platform:
+
+| Method | Endpoint | Access |
+|--------|----------|--------|
+| POST | `/api/v1/applications/restaurant` | Public (restaurant application) |
+| GET | `/api/v1/applications` | Admin (all applications) |
+| GET | `/api/v1/applications/:id` | Admin (single application) |
+| PATCH | `/api/v1/applications/:id/approve` | Admin |
+| PATCH | `/api/v1/applications/:id/reject` | Admin |
+
+---
+
+## 🎯 Promotions
+
+| Method | Endpoint | Access |
+|--------|----------|--------|
+| GET | `/api/v1/promotions` | Public (active promotions) |
+| POST | `/api/v1/promotions` | Admin |
+| PATCH | `/api/v1/promotions/:id` | Admin |
+| DELETE | `/api/v1/promotions/:id` | Admin |
+| PATCH | `/api/v1/promotions/reorder` | Admin (drag-and-drop ordering) |
+
+---
+
+## 🧪 Test / Dev
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/test/socket` | Test socket.io events |
+| GET | `/api/v1/health` | Health check endpoint (API status) |
+
+---
+
+## 📊 Response Patterns
+
+### Success Response Format
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Optional success message"
+}
+```
+
+### Error Response Format
+```json
+{
+  "success": false,
+  "error": "ERROR_CODE",
+  "message": "Human-readable error message"
+}
+```
+
+### Pagination (if applicable)
+```json
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+## 🔧 Key Implementation Notes
+
+1. **OTP System:** All OTPs are 6-digit, valid for 5 minutes. Sent via AfroMessage SMS service.
+2. **Phone Numbers:** Must follow Ethiopian E.164 format (`+251xxxxxxxxx`). The API likely expects only Ethiopian numbers based on the documentation.
+3. **Role-Based Access:** Middleware checks user role before allowing access to protected routes.
+4. **Restaurant Images:** Uploaded to Cloudinary via multipart/form-data.
+5. **Payments:** Integrated with Chapa payment gateway. Webhook handles post-payment flow automatically.
+6. **Data Relationships:**
+   - Users can have multiple addresses
+   - Restaurants have multiple menus
+   - Menus have multiple foods
+   - Orders belong to customers and restaurants
+   - Deliveries link orders with delivery persons
+   - Reviews & Ratings are scoped to restaurants and users
+7. **Socket.IO:** Used for real-time updates (e.g., order status changes). Test endpoint available.
+8. **Bulk Operations:** Special endpoints for bulk creating menus/foods (complex nested structure).
+9. **Service Fee:** Platform takes a percentage (configured server-side) from each order.
+10. **Delivery Fee:** Calculated based on distance (estimated endpoint available).
+11. **Address Storage:** Users can save multiple addresses; current address is used for orders.
+12. **Nearby Restaurants:** Uses Haversine formula for geospatial querying (requires lat/lng).
+
+---
+
+## 🎯 Telegram Mini App Integration
+
+The frontend should:
+
+1. **Auth Flow:** Implement OTP-based login using signup/login endpoints
+2. **Token Storage:** Store JWT securely (Telegram Mini App environment)
+3. **Role Detection:** After login, fetch `/users/me` to get user role
+4. **Routing:** Show different UI based on role (Customer vs Manager vs Delivery)
+5. **Restaurant Browsing:** Public endpoints for restaurants/menus/foods
+6. **Order Placement:** Customer flow → `place-order` → redirect to Chapa → webhook updates order
+7. **Order Tracking:** Poll or socket for order status updates
+8. **Web App Init:** Use Telegram Web App SDK for better UX
+
+---
+
+## 📝 Variables (Postman)
+
+Set these in Postman collection:
+
+- `{{baseUrl}}` = `http://localhost:3000`
+- `{{token}}` = JWT from login/signup
+- `{{restaurantId}}` = Restaurant MongoDB ID
+- `{{orderId}}` = Order MongoDB ID
+- `{{userId}}` = User MongoDB ID
+- `{{menuId}}` = Menu MongoDB ID
+- `{{foodId}}` = Food MongoDB ID
+- `{{reviewId}}` = Review MongoDB ID
+- `{{ratingId}}` = Rating MongoDB ID
+- `{{promoId}}` = Promotion MongoDB ID
+
+---
+
+## 🚀 Recommended Frontend Pages
+
+1. **Auth Pages:**
+   - Login (phone input)
+   - OTP Verification
+   - Signup (phone + password)
+
+2. **Customer Pages:**
+   - Home (Restaurants list)
+   - Nearby Restaurants (with location)
+   - Restaurant Detail (menu + foods)
+   - Cart & Checkout
+   - Payment Redirect
+   - Order History
+   - Track Active Order
+   - Profile & Addresses
+   - Write Review/Rating
+
+3. **Manager Pages:**
+   - Dashboard
+   - My Restaurants
+   - Restaurant Orders
+   - Menu Management
+   - Food Management
+
+4. **Delivery Pages:**
+   - Available Orders
+   - Active Deliveries
+   - Delivery History
+   - Update Location
+
+---
+
+**Note:** This documentation is derived from the Postman collection at:
+`postman-collection/Bahrain-Delivery-API.postman_collection.json`
+
+For implementation details, check the API server code and models for exact data schemas.
